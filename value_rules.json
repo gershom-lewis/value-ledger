@@ -8,9 +8,12 @@
     "issue-resolved": { "hours": 1.0, "dollars": 0, "label": "Security issue resolved" }
   },
 
+  "_assumptions": "Savannah's 'appointment-booked' is valued at $500 = expected value, not cash: a booked AI-efficiency audit converting at ~25% to a $2,000 assessment. 'lead-captured' at $200 is a qualified caller with a callback number but no booking. Misrouted or unusable calls earn 'call-answered' only — the agent still did the work of answering, but no lead exists. Change these per client; they are assumptions, kept visible on purpose.",
+
   "Savannah": {
     "call-answered": { "hours": 0.1, "dollars": 0, "label": "Call answered 24/7" },
     "lead-captured": { "hours": 0.25, "dollars": 200, "label": "Lead captured (would-be missed call)" },
+    "appointment-booked": { "hours": 0.5, "dollars": 500, "label": "Appointment booked straight to the calendar" },
     "spam-screened": { "hours": 0.05, "dollars": 0, "label": "Spam / robocall screened" }
   },
 

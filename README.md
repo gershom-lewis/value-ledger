@@ -34,7 +34,47 @@ Command Center "Value" tile (whole-team total), and writes
 
 ---
 
-## Wiring a cloud agent (Savannah, Vannah, …)
+## Savannah — WIRED (2026-08-24)
+
+Savannah is live in the ledger. `savannah_adapter.py` turns her calls into value
+events, keyed so a re-run never double-counts.
+
+**Proven on real calls:** 5 calls -> 2 booked AI-efficiency audits, 1 unusable call
+screened, 2 off-target callers handled = **$1,180 of value in 30 days**.
+
+She feeds the ledger from either source, both credential-free:
+
+| Path | How | Use when |
+|---|---|---|
+| **Local file** (default) | `data/savannah-leads.jsonl` — one call per line: `{"id","at","caller","summary"}` | Seeding, backfilling, testing |
+| **Published sheet** | Set `SAVANNAH_SHEET_CSV` to the *Publish to web → CSV* link of the **Savannah Leads** sheet Make already writes | Ongoing / unattended |
+
+The published-CSV path is the recommended way to run this unattended: Make already
+logs every call to that sheet, so no API key, no OAuth, nothing new to maintain.
+
+```bash
+python savannah_adapter.py
+```
+
+**How a call is scored** (`classify()` in the adapter — deliberately conservative,
+and deliberately readable):
+
+| Call looks like | Event | Value |
+|---|---|---|
+| Booked something ("scheduled", "appointment", "audit for") | `appointment-booked` | 0.5h + $500 |
+| Real caller with a callback number | `lead-captured` | 0.25h + $200 |
+| Off-target / misrouted, correctly turned away | `call-answered` | 0.1h |
+| Too short, silent, robocall, wrong number | `spam-screened` | 0.05h |
+
+A call only counts as a *lead* when there is something to follow up on. Misrouted
+callers earn `call-answered` — Savannah did real work, but no lead exists. The $500
+on a booked appointment is **expected value, not cash**: a booked audit converting at
+~25% to a $2,000 assessment. That assumption is written into `value_rules.json` under
+`_assumptions` so it is never hidden from a client.
+
+---
+
+## Wiring the next cloud agent (Vannah, …)
 
 Guardian writes a local scan log, so its numbers are read directly. Cloud agents
 (Savannah on Vapi, Vannah on Cloudflare) can't write to this machine — so they
@@ -110,6 +150,8 @@ work), not what you charge.
 | `ledger.py` | Core module + CLI + text/HTML report. Stdlib only, no dependencies. |
 | `value_rules.json` | Per-agent value assumptions (edit per client). |
 | `guardian_adapter.py` | Reference adapter — Guardian → ledger. |
+| `savannah_adapter.py` | Savannah → ledger (local file or published sheet CSV). |
+| `data/savannah-leads.jsonl` | Savannah's known calls (seeded from her Gmail alerts). |
 | `data/ledger.jsonl` | The store: append-only, human-readable (gitignored). |
 | `reports/` | Generated HTML value reports (gitignored). |
 
@@ -120,6 +162,7 @@ work), not what you charge.
 - **Auto-send the weekly report** (email / Telegram) on a schedule → goes through
   the **automation-hardening gate** first (persistence, error handling,
   monitoring, dead-man's switch) before it's called done. Runs manually today.
-- **Dashboard tile** — surface "value delivered this week" in the Command Center,
-  the same way Guardian's score is surfaced.
+- ~~**Dashboard tile**~~ — **done.** The Command Center's Guardian page shows a
+  "Value Delivered" panel fed by `sync_dashboard()`, covering **all** agents combined.
+- **Publish to GitHub** as repo #6 — the package is clean and portfolio-worthy.
 - **Per-client branding** on the HTML report.
