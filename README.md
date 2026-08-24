@@ -56,46 +56,31 @@ logs every call to that sheet, so no API key, no OAuth, nothing new to maintain.
 python savannah_adapter.py
 ```
 
-### Making her self-updating (the one manual step)
+### Savannah's data stays private (standing decision, 2026-08-24)
 
-1. Open the **Savannah Leads** sheet → **File → Share → Publish to web**
-2. Select the **Savannah Leads** tab, format **Comma-separated values (.csv)**, **Publish**
-3. Copy the link into `data/savannah-config.json`:
+**The Savannah Leads sheet is never published to the web** - not the whole sheet,
+not a trimmed tab, no variant. "Publish to web" makes a sheet readable by anyone
+holding the link, and hers carries real caller names and phone numbers. Her lead
+data stays on the machine.
 
-```json
-{ "sheet_csv_url": "https://docs.google.com/spreadsheets/d/e/..../pub?gid=0&single=true&output=csv" }
-```
+So this install runs **local-file only**: `data/savannah-leads.jsonl`, refreshed
+from her Gmail alerts on request. `data/savannah-config.json` is deliberately empty
+and carries the same warning.
 
-That file is gitignored and read at every run — a scheduled task does not inherit
-your shell's environment, which is why the URL lives in a file rather than only in
-`SAVANNAH_SHEET_CSV`.
+If a run of hers ever needs to be automated end-to-end, the route is a **Google
+service account reading the PRIVATE sheet** - credentials held locally, nothing
+exposed. Not the published-CSV path.
 
-**Already scheduled:** Windows task **`AIOS Savannah Value Sync`**, daily 07:00, running
-under `pythonw.exe` (no console window). Until the link is set it simply syncs from the
-local file — it never invents numbers. A dead or unreachable link degrades to the local
-file with a warning; it never breaks the run.
+*(The `SAVANNAH_SHEET_CSV` / published-CSV capability still exists in the code as a
+generic option for client deployments that want it. It is off here and stays off.)*
+
+**Already scheduled:** Windows task **`AIOS Savannah Value Sync`**, daily 07:00, under
+`pythonw.exe`. It syncs the local file and refreshes the Command Center Value tile.
+Every run appends to `logs/savannah-sync.log`.
 
 ```powershell
 Get-ScheduledTaskInfo -TaskName "AIOS Savannah Value Sync"   # LastTaskResult 0 = success
 ```
-
-Every run appends to `logs/savannah-sync.log`.
-
-**How a call is scored** (`classify()` in the adapter — deliberately conservative,
-and deliberately readable):
-
-| Call looks like | Event | Value |
-|---|---|---|
-| Booked something ("scheduled", "appointment", "audit for") | `appointment-booked` | 0.5h + $500 |
-| Real caller with a callback number | `lead-captured` | 0.25h + $200 |
-| Off-target / misrouted, correctly turned away | `call-answered` | 0.1h |
-| Too short, silent, robocall, wrong number | `spam-screened` | 0.05h |
-
-A call only counts as a *lead* when there is something to follow up on. Misrouted
-callers earn `call-answered` — Savannah did real work, but no lead exists. The $500
-on a booked appointment is **expected value, not cash**: a booked audit converting at
-~25% to a $2,000 assessment. That assumption is written into `value_rules.json` under
-`_assumptions` so it is never hidden from a client.
 
 ---
 
