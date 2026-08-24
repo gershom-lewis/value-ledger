@@ -105,6 +105,14 @@ drop one line per action into the **event inbox**, `data/events-in.jsonl`:
 
 ---
 
+## Setting up a client
+
+See **[SETUP.md](SETUP.md)** — the menu of ways to get an agent's activity in
+(direct call, log adapter, event inbox, published sheet, service account, manual),
+how to write honest value rules, and how to set a per-client hourly rate.
+
+---
+
 ## Plug in any agent (two ways)
 
 **1. The agent records as it works** — one line wherever the agent does something valuable:

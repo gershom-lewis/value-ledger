@@ -8,13 +8,27 @@
     "issue-resolved": { "hours": 1.0, "dollars": 0, "label": "Security issue resolved" }
   },
 
-  "_assumptions": "Savannah's 'appointment-booked' is valued at $500 = expected value, not cash: a booked AI-efficiency audit converting at ~25% to a $2,000 assessment. 'lead-captured' at $200 is a qualified caller with a callback number but no booking. Misrouted or unusable calls earn 'call-answered' only — the agent still did the work of answering, but no lead exists. Change these per client; they are assumptions, kept visible on purpose.",
+  "_assumptions": "Savannah's 'appointment-booked' is valued at $500 = expected value, not cash: a booked AI-efficiency audit converting at ~25% to a $2,000 assessment. 'lead-captured' at $200 is a qualified caller with a callback number but no booking. Misrouted or unusable calls earn 'call-answered' only — the agent still did the work of answering, but no lead exists. PropertyManager: 'lease-renewal-secured' at $500 is deliberately modest against a real turnover cost of roughly $1,500–3,000 (make-ready + marketing + vacancy), because the agent's outreach is only part of why a tenant renews; 'vacancy-day-saved' at $65 is one day's rent on a ~$1,950/mo unit — set it to the client's actual average daily rent. Damage avoided by catching a 2am leak is deliberately NOT monetized: it is real but unprovable, and one unprovable number discredits the whole report. Change these per client; they are assumptions, kept visible on purpose.",
 
   "Savannah": {
     "call-answered": { "hours": 0.1, "dollars": 0, "label": "Call answered 24/7" },
     "lead-captured": { "hours": 0.25, "dollars": 200, "label": "Lead captured (would-be missed call)" },
     "appointment-booked": { "hours": 0.5, "dollars": 500, "label": "Appointment booked straight to the calendar" },
     "spam-screened": { "hours": 0.05, "dollars": 0, "label": "Spam / robocall screened" }
+  },
+
+  "_property_management_note": "PropertyManager is the rules pack for a property-management client. Rename the block to whatever that client's agent is actually called, and set _hourly_rate to what THEIR admin time really costs (a leasing assistant, not a consultant). Turnover and vacancy figures vary by market — set them from the client's own numbers on day one.",
+
+  "PropertyManager": {
+    "_hourly_rate": 35,
+    "after-hours-call-answered": { "hours": 0.15, "dollars": 0, "label": "After-hours call answered (no voicemail)" },
+    "maintenance-triaged": { "hours": 0.35, "dollars": 0, "label": "Maintenance request triaged & ticketed" },
+    "emergency-dispatched": { "hours": 0.5, "dollars": 0, "label": "Real emergency escalated immediately" },
+    "showing-scheduled": { "hours": 0.25, "dollars": 0, "label": "Showing booked without staff" },
+    "application-screened": { "hours": 0.4, "dollars": 0, "label": "Applicant pre-screened before staff time" },
+    "lease-renewal-secured": { "hours": 0.5, "dollars": 500, "label": "Lease renewal secured (turnover avoided)" },
+    "vacancy-day-saved": { "hours": 0, "dollars": 65, "label": "Vacancy day saved (unit filled sooner)" },
+    "owner-report-sent": { "hours": 1.0, "dollars": 0, "label": "Owner report prepared & sent" }
   },
 
   "Vannah": {

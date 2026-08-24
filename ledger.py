@@ -23,12 +23,23 @@ Design (per the Build & Architecture Doctrine):
 import json
 import os
 from datetime import datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(HERE, "data")
 STORE = os.path.join(DATA_DIR, "ledger.jsonl")
 EVENTS_IN = os.path.join(DATA_DIR, "events-in.jsonl")
 RULES_PATH = os.path.join(HERE, "value_rules.json")
+
+
+def _round1(x: float) -> float:
+    """Round to 1dp, half-UP and deterministically.
+
+    Python's round() is banker's rounding on top of binary floats, so a total that
+    lands exactly on .x5 (1.25 hours does) can come out 1.2 or 1.3 depending on the
+    order the numbers were added. A client report whose hours wobble between runs
+    is worse than one that is slightly generous - so this pins it."""
+    return float(Decimal(repr(x)).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
 def _parse(s: str) -> datetime:
@@ -109,13 +120,36 @@ class ValueLedger:
             rows = [r for r in rows if _parse(r.get("at", "")) >= cutoff]
         return rows
 
+    def rate_for(self, agent: str | None) -> float:
+        """The hourly rate to value THIS agent's saved time at. An agent block may
+        set its own `_hourly_rate`; otherwise the global default applies.
+
+        This matters for honesty: $150/hr is a consultant's rate. The time an
+        agent saves a property manager's office is admin time worth far less, and
+        billing it at $150 would inflate the report into something no client
+        believes. The whole tool depends on the number being credible."""
+        default = (self.rules.get("_defaults", {}) or {}).get("hourly_rate", 150)
+        if not agent:
+            return default
+        return (self.rules.get(agent, {}) or {}).get("_hourly_rate", default)
+
     def summary(self, since_days: int = 7, agent: str | None = None,
                 hourly_rate=None) -> dict:
-        rate = hourly_rate or (self.rules.get("_defaults", {}) or {}).get("hourly_rate", 150)
+        rate = hourly_rate or self.rate_for(agent)
         rows = self.entries(since_days=since_days, agent=agent)
-        hours = round(sum(r.get("hours_saved", 0) for r in rows), 1)
         direct = round(sum(r.get("dollars_saved", 0) for r in rows), 2)
-        time_value = round(hours * rate, 2)
+
+        # Value each agent's time at ITS OWN rate, so an all-agents report never
+        # blends a $35/hr admin hour into a $150/hr one. Crucially, multiply the
+        # ROUNDED per-agent hours - the same figure the report prints - so a client
+        # checking "hours x rate" on the page arrives at the number we showed them.
+        per_agent = {}
+        for r in rows:
+            per_agent[r.get("agent")] = per_agent.get(r.get("agent"), 0) + r.get("hours_saved", 0)
+        per_agent = {a: _round1(h) for a, h in per_agent.items()}
+        hours = _round1(sum(per_agent.values()))
+        time_value = round(sum(h * (hourly_rate or self.rate_for(a))
+                               for a, h in per_agent.items()), 2)
         by = {}
         for r in rows:
             label = r.get("label", r.get("event"))
