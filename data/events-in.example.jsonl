@@ -1,0 +1,3 @@
+{"agent": "Savannah", "event": "lead-captured", "at": "2026-08-24T14:05:00", "id": "vapi-call-abc123", "note": "After-hours call — Maria, kitchen remodel"}
+{"agent": "Savannah", "event": "spam-screened", "at": "2026-08-24T14:20:00", "id": "vapi-call-abc124"}
+{"agent": "Vannah", "event": "lead-captured", "at": "2026-08-24T15:10:00", "id": "web-chat-xyz789", "note": "Website visitor asked for a quote"}

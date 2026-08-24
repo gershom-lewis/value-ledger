@@ -1,0 +1,22 @@
+{
+  "_comment": "Per-agent value rules. For each agent, map an event type to the hours and dollars it saves. Edit these per client — they're your assumptions, kept honest and visible. 'hours' feeds the labor-value math (hours x hourly_rate); 'dollars' is direct value (e.g. a captured lead). Add a new agent by adding a block like these.",
+  "_defaults": { "hourly_rate": 150 },
+
+  "Guardian": {
+    "security-scan": { "hours": 1.5, "dollars": 0, "label": "Automated network security scan (vs manual audit)" },
+    "issue-flagged": { "hours": 0.5, "dollars": 0, "label": "Security issue caught & tracked" },
+    "issue-resolved": { "hours": 1.0, "dollars": 0, "label": "Security issue resolved" }
+  },
+
+  "Savannah": {
+    "call-answered": { "hours": 0.1, "dollars": 0, "label": "Call answered 24/7" },
+    "lead-captured": { "hours": 0.25, "dollars": 200, "label": "Lead captured (would-be missed call)" },
+    "spam-screened": { "hours": 0.05, "dollars": 0, "label": "Spam / robocall screened" }
+  },
+
+  "Vannah": {
+    "chat-handled": { "hours": 0.15, "dollars": 0, "label": "Website visitor engaged" },
+    "lead-captured": { "hours": 0.25, "dollars": 200, "label": "Web lead captured" },
+    "email-followup": { "hours": 0.2, "dollars": 0, "label": "Follow-up email sent" }
+  }
+}

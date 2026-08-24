@@ -1,0 +1,11 @@
+# Real activity + generated reports (client data — never publish)
+data/*
+!data/events-in.example.jsonl
+reports/
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
