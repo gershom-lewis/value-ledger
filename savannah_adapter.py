@@ -23,6 +23,7 @@ Run:  python savannah_adapter.py
 """
 
 import csv
+import hashlib
 import io
 import json
 import os
@@ -73,6 +74,20 @@ def _parse_when(s):
     return datetime.now()
 
 
+def call_key(row):
+    """A stable, source-independent id for one call: when it happened plus a
+    fingerprint of what was said. Deliberately NOT built from the caller number,
+    so the same call keys identically whether it arrives from the local file or
+    from a PII-free published sheet. md5 (not hash()) because Python randomises
+    str hashing per process - that would break idempotency across runs."""
+    # Normalise the timestamp first: the sheet writes "8/19/2026 15:22:46" while the
+    # local file writes ISO. Unnormalised, the same call would key twice.
+    at = _parse_when(row.get("at")).strftime("%Y-%m-%dT%H:%M")
+    text = " ".join((row.get("summary") or "").lower().split())[:120]
+    fp = hashlib.md5(text.encode("utf-8", "replace")).hexdigest()[:10]
+    return f"savannah:{at}:{fp}"
+
+
 def classify(summary, caller=""):
     """Map a call summary to (event, note). Conservative on purpose: a call only
     counts as a lead when there is something to follow up on."""
@@ -89,10 +104,11 @@ def classify(summary, caller=""):
         # Real work, no lead - so it earns call-answered, not lead-captured.
         return "call-answered", "Off-target caller handled"
 
-    has_callback = "no callback" not in s and bool(caller)
-    if has_callback:
-        return "lead-captured", "Caller with callback number"
-    return "call-answered", "Call answered, no callback captured"
+    # The summary itself states when no number was left, so this still works on a
+    # PII-free feed that carries no caller column at all.
+    if "no callback" in s or "no phone" in s:
+        return "call-answered", "Call answered, no callback captured"
+    return "lead-captured", "Caller left something to follow up on"
 
 
 def _load_local(path=LEADS_FILE):
@@ -148,10 +164,12 @@ def sync():
     ledger = ValueLedger()
     rows = _load_local() + _load_sheet()
 
-    # De-duplicate across both sources on caller+timestamp.
+    # De-duplicate on WHAT the call was, not where it came from. The same call can
+    # arrive from the local file (with a caller number) and from a PII-free sheet
+    # (without one) - both must land on the same key or it double-counts.
     seen, calls = set(), []
     for r in rows:
-        sig = (str(r.get("caller", "")).strip(), str(r.get("at", ""))[:16])
+        sig = call_key(r)
         if sig in seen:
             continue
         seen.add(sig)
@@ -162,9 +180,9 @@ def sync():
         summary = r.get("summary", "")
         caller = r.get("caller", "")
         event, why = classify(summary, caller)
-        key = r.get("id") or f"savannah:{caller}:{r.get('at', '')}"
+        key = call_key(r)
         note = f"{why}: {summary[:160]}" if summary else why
-        if ledger.record_once(key=f"savannah:{key}", agent="Savannah", event=event,
+        if ledger.record_once(key=key, agent="Savannah", event=event,
                               when=_parse_when(r.get("at")), note=note):
             new += 1
     return ledger, new, calls
