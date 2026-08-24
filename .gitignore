@@ -2,6 +2,7 @@
 data/*
 !data/events-in.example.jsonl
 reports/
+logs/
 
 # Secrets
 .env

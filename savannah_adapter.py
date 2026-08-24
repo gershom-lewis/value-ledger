@@ -34,7 +34,25 @@ from ledger import ValueLedger, render_text, render_html, sync_dashboard
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LEADS_FILE = os.path.join(HERE, "data", "savannah-leads.jsonl")
-SHEET_CSV = os.environ.get("SAVANNAH_SHEET_CSV", "").strip()
+CONFIG_FILE = os.path.join(HERE, "data", "savannah-config.json")
+LOG_FILE = os.path.join(HERE, "logs", "savannah-sync.log")
+
+
+def _sheet_url():
+    """The published-CSV link, from the env var or data/savannah-config.json.
+    The config file is what makes unattended runs work - a scheduled task does
+    not inherit an interactive shell's environment."""
+    env = os.environ.get("SAVANNAH_SHEET_CSV", "").strip()
+    if env:
+        return env
+    try:
+        with open(CONFIG_FILE, encoding="utf-8") as fh:
+            return (json.load(fh).get("sheet_csv_url") or "").strip()
+    except Exception:
+        return ""
+
+
+SHEET_CSV = _sheet_url()
 
 # Phrases that decide what a call was worth. Kept here, in the open, because
 # they are judgement calls - not hidden scoring.
@@ -152,11 +170,52 @@ def sync():
     return ledger, new, calls
 
 
+class _Tee:
+    """Writes to the console (when there is one) and always to the log file.
+    Under pythonw.exe - which is how a scheduled task runs this - sys.stdout is
+    None, so an unguarded print() would crash every unattended run."""
+
+    def __init__(self, console, log_path):
+        self.console = console
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        self.log = open(log_path, "a", encoding="utf-8", errors="replace")
+
+    def write(self, s):
+        if self.console is not None:
+            try:
+                self.console.write(s)
+            except Exception:
+                pass
+        self.log.write(s)
+
+    def flush(self):
+        for f in (self.console, self.log):
+            try:
+                if f is not None:
+                    f.flush()
+            except Exception:
+                pass
+
+
+def _setup_output():
+    console = sys.stdout
+    if console is not None:
+        try:
+            console.reconfigure(encoding="utf-8")
+        except Exception:
+            console = None
+    sys.stdout = _Tee(console, LOG_FILE)
+    sys.stderr = sys.stdout
+    print(f"\n===== savannah_adapter {datetime.now():%Y-%m-%d %H:%M:%S} =====")
+
+
 if __name__ == "__main__":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+    _setup_output()
+
+    if not SHEET_CSV:
+        print("No published sheet configured - using the local file only.")
+        print("  To go unattended: publish the Savannah Leads sheet to the web as CSV,")
+        print(f"  then put the link in {CONFIG_FILE} as {{\"sheet_csv_url\": \"...\"}}")
 
     ledger, n, calls = sync()
     print(f"Synced Savannah -> {len(calls)} call(s) known, {n} new event(s) recorded.\n")

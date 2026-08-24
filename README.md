@@ -56,6 +56,31 @@ logs every call to that sheet, so no API key, no OAuth, nothing new to maintain.
 python savannah_adapter.py
 ```
 
+### Making her self-updating (the one manual step)
+
+1. Open the **Savannah Leads** sheet → **File → Share → Publish to web**
+2. Select the **Savannah Leads** tab, format **Comma-separated values (.csv)**, **Publish**
+3. Copy the link into `data/savannah-config.json`:
+
+```json
+{ "sheet_csv_url": "https://docs.google.com/spreadsheets/d/e/..../pub?gid=0&single=true&output=csv" }
+```
+
+That file is gitignored and read at every run — a scheduled task does not inherit
+your shell's environment, which is why the URL lives in a file rather than only in
+`SAVANNAH_SHEET_CSV`.
+
+**Already scheduled:** Windows task **`AIOS Savannah Value Sync`**, daily 07:00, running
+under `pythonw.exe` (no console window). Until the link is set it simply syncs from the
+local file — it never invents numbers. A dead or unreachable link degrades to the local
+file with a warning; it never breaks the run.
+
+```powershell
+Get-ScheduledTaskInfo -TaskName "AIOS Savannah Value Sync"   # LastTaskResult 0 = success
+```
+
+Every run appends to `logs/savannah-sync.log`.
+
 **How a call is scored** (`classify()` in the adapter — deliberately conservative,
 and deliberately readable):
 
@@ -152,6 +177,8 @@ work), not what you charge.
 | `guardian_adapter.py` | Reference adapter — Guardian → ledger. |
 | `savannah_adapter.py` | Savannah → ledger (local file or published sheet CSV). |
 | `data/savannah-leads.jsonl` | Savannah's known calls (seeded from her Gmail alerts). |
+| `data/savannah-config.json` | The published-sheet link for unattended runs (gitignored). |
+| `logs/savannah-sync.log` | Every Savannah sync run, appended (gitignored). |
 | `data/ledger.jsonl` | The store: append-only, human-readable (gitignored). |
 | `reports/` | Generated HTML value reports (gitignored). |
 
